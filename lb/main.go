@@ -18,7 +18,7 @@ type WebRequest struct {
 
 func ErrorHandler(w *http.ResponseWriter, err error){
 	log.Println(err.Error())
-	http.Error(*w, err.Error(), 500)
+	http.Error(*w, err.Error(), http.StatusInternalServerError)
 }
 
 func (wr *WebRequest) Reroute(w http.ResponseWriter, r *http.Request){
