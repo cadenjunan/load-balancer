@@ -16,31 +16,35 @@ type WebRequest struct {
 	registry UriRegistry
 }
 
-
+func ErrorHandler(w *http.ResponseWriter, err error){
+	log.Println(err.Error())
+	http.Error(*w, err.Error(), 500)
+}
 
 func (wr *WebRequest) Reroute(w http.ResponseWriter, r *http.Request){
 	method := r.Method
 	body:= r.Body
 	
-	
 	defer body.Close()
 	req, err := http.NewRequest(method, wr.registry.uri + r.RequestURI, body)
 	if err != nil {
-		log.Panic(err.Error())
+		ErrorHandler(&w,err)
 	}
 	for h := range r.Header {
 		req.Header.Add(h, r.Header.Get(h))
 	}
 	
 	if resp, err := wr.client.Do(req); err != nil {
-		fmt.Fprintf(w, "%s", err.Error())
+		ErrorHandler(&w,err)
 	}else{
 		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Panic(err.Error())
+			ErrorHandler(&w,err)
+		}else{
+			fmt.Fprintf(w, "%s", string(body))
 		}
-		fmt.Fprintf(w, "%s", string(body))
+		
 	}
 }
 
