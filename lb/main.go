@@ -5,15 +5,38 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sync"
 )
 
 type UriRegistry struct {
-	uri string
+	mu sync.Mutex
+	addresses []string
+	currIndex int
+	endIndex int
+}
+
+func NewRegistry(addresses []string) *UriRegistry {
+	return &UriRegistry{
+		mu: sync.Mutex{},
+		addresses: addresses,
+		currIndex: 0,
+		endIndex: len(addresses)-1,
+	}
+}
+func (r *UriRegistry) GetIpAddress() string {
+	defer r.mu.Unlock()
+	r.mu.Lock()
+	if r.currIndex > r.endIndex {
+		r.currIndex = 0
+	}
+	index := r.currIndex
+	r.currIndex++
+	return r.addresses[index]
 }
 
 type WebRequest struct {
 	client *http.Client
-	registry UriRegistry
+	registry *UriRegistry
 }
 
 func ErrorHandler(w *http.ResponseWriter, err error){
@@ -26,7 +49,8 @@ func (wr *WebRequest) Reroute(w http.ResponseWriter, r *http.Request){
 	body:= r.Body
 	
 	defer body.Close()
-	req, err := http.NewRequest(method, wr.registry.uri + r.RequestURI, body)
+	uri := wr.registry.GetIpAddress()
+	req, err := http.NewRequest(method, uri + r.RequestURI, body)
 	if err != nil {
 		ErrorHandler(&w,err)
 	}
@@ -49,7 +73,7 @@ func (wr *WebRequest) Reroute(w http.ResponseWriter, r *http.Request){
 }
 
 func main() {
-	wr := WebRequest{client: &http.Client{}, registry: UriRegistry{uri: "http://localhost:8000"}}
+	wr := WebRequest{client: &http.Client{}, registry: NewRegistry([]string{"http://localhost:8000"})}
 	log.Println("Load balancer runs at localhost port 8080")
 	log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(wr.Reroute)))
 }
