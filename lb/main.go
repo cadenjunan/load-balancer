@@ -16,6 +16,9 @@ type UriRegistry struct {
 }
 
 func NewRegistry(addresses []string) *UriRegistry {
+	if len(addresses) == 0 {
+		panic("List of ip addresses is empty.")
+	}
 	return &UriRegistry{
 		mu: sync.Mutex{},
 		addresses: addresses,
@@ -73,7 +76,7 @@ func (wr *WebRequest) Reroute(w http.ResponseWriter, r *http.Request){
 }
 
 func main() {
-	wr := WebRequest{client: &http.Client{}, registry: NewRegistry([]string{"http://localhost:8000"})}
+	wr := WebRequest{client: &http.Client{}, registry: NewRegistry([]string{"http://localhost:8000","http://localhost:8001", "http://localhost:8002"})}
 	log.Println("Load balancer runs at localhost port 8080")
 	log.Fatal(http.ListenAndServe(":8080", http.HandlerFunc(wr.Reroute)))
 }
