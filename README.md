@@ -1,3 +1,3 @@
 # CC Load Balancer
 
-Trying out Coding Challenge Load Balancer at https://codingchallenges.fyi/challenges/challenge-load-balancer
+Trying out Coding Challenge Load Balancer at https://codingchallenges.fyi/challenges/challenge-load-balancer with Round Robin
