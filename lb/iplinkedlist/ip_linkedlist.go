@@ -13,6 +13,7 @@ type IPNode struct {
 
 type IPLinkedList struct {
 	mu sync.Mutex
+	OfflineTable map[string]*IPNode
 	Table map[string]*IPNode
 	First *IPNode
 	Last  *IPNode
@@ -25,7 +26,7 @@ func NewLinkedList(ipAddresses []string) *IPLinkedList {
 		panic("No ip addresses is given for starting this load balancer")
 	}
 	currNode := &IPNode{Prev: nil, Next: nil}
-	lList := IPLinkedList{First: currNode, Last: nil, Size: size, mu: sync.Mutex{}}
+	lList := IPLinkedList{First: currNode, Last: nil, Size: size, mu: sync.Mutex{}, OfflineTable: make(map[string]*IPNode)}
 	ipTable := make(map[string]*IPNode)
 
 	for i := range ipAddresses {
@@ -49,7 +50,11 @@ func (llist *IPLinkedList) GetAddr() (string, error) {
 	if llist.First == nil {
 		return "", errors.New("all servers are not available at the moment")
 	}
+	
 	curr := llist.First
+	if curr.Next == nil {
+		return curr.IpAddr, nil
+	}
 	addr := curr.IpAddr
 	nextNode := curr.Next
 
@@ -64,6 +69,28 @@ func (llist *IPLinkedList) GetAddr() (string, error) {
 	return addr, nil
 }
 
+func (llist *IPLinkedList) AddToOfflineTable(node *IPNode) {
+	llist.OfflineTable[node.IpAddr] = node
+}
+func (llist *IPLinkedList) RemoveFromOfflineTable(ipAddr string){
+	delete(llist.OfflineTable, ipAddr)
+}
+
+func (llist *IPLinkedList) AddAddr(node *IPNode){
+	defer llist.mu.Unlock()
+	llist.mu.Lock()
+	//if llist is empty?
+	if llist.First == nil {
+		llist.First = node
+	}else{
+		llist.Last.Next = node
+		node.Prev = llist.Last
+	}
+	
+	llist.Last = node
+	llist.Table[node.IpAddr] = node
+}
+
 func (llist *IPLinkedList) RemoveAddr(addr string) (*IPNode, error) {
 	defer llist.mu.Unlock()
 	llist.mu.Lock()
@@ -72,7 +99,11 @@ func (llist *IPLinkedList) RemoveAddr(addr string) (*IPNode, error) {
 	if !ok {
 		return nil, errors.New("no ip address is found in this pool")
 	}
-	switch node {
+	if node == llist.First && node == llist.Last {
+		llist.First = nil
+		llist.Last = nil
+	}else {
+		switch node {
 	case llist.First:
 		next := llist.First.Next
 		if next != nil {
@@ -92,6 +123,8 @@ func (llist *IPLinkedList) RemoveAddr(addr string) (*IPNode, error) {
 		next.Prev = prev
 
 	}
+	}
+	
 	delete(llist.Table, addr)
 	node.Next = nil
 	node.Prev = nil
