@@ -20,6 +20,12 @@ func ErrorHandler(w *http.ResponseWriter, err error){
 	http.Error(*w, err.Error(), http.StatusInternalServerError)
 }
 
+func (wr *WebRequest) CheckHealthStart() chan<-bool {
+	exit := make(chan<-bool)
+	//Todo
+	return exit
+}
+
 func (wr *WebRequest) Reroute(w http.ResponseWriter, r *http.Request){
 	method := r.Method
 	body:= r.Body
